@@ -11,7 +11,7 @@ STATUS_AUTHENTICATED = 2
 STATUS_CONN_ESTABLISHED = 3
 
 
-BUFF_SIZE = 1024
+BUFF_SIZE = 1024*1024
 
 class Client:
 
@@ -77,14 +77,13 @@ class Client:
         
     def sendall(self, _bytes):
         data_length = self._socket.sendall(_bytes)
-        print(data_length)
         
-    
     def recvall(self):
         data = b''
+        import pdb; pdb.set_trace()
         while True:
             frag = self._socket.recv(BUFF_SIZE)
-            if not frag:
+            if len(frag) == 0:
                 break
             data += frag
         return data
@@ -101,7 +100,6 @@ class Client:
         self._socket.send(request_content)
 
     def _recv_conn_reponse(self):   
-        import pdb;pdb.set_trace()
         res = self._socket.recv(255) # to be verified
         # check version
         ver, res = res[:1], res[1:]
