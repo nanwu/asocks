@@ -1,0 +1,4 @@
+tags
+*.pyc
+*.swp
+__pycache__
