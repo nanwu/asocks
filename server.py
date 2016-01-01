@@ -22,25 +22,36 @@ class AsocksServer:
         status[reader] = STATUS_INIT
 
         while True:
-            if status[reader] == STATUS_INIT:
-                self._stage_nego(reader, writer)
-            elif status[reader] == STATUS_NEGO_COMPLETE:
-                data = yield from reader.read(2)
-                assert data[:1] == b'\x05'
-                cmd = data[1:2]
-                if cmd == b'\x01': # CONNECT
-                    data = yield from reader.read(2)
-                    assert data[:1] == b'\x00'
-                    atyp = data[1:2]
-                    if atyp == b'\x01':
-                         
-                    elif atyp == b'\x03':
+            try:
+                if status[reader] == STATUS_INIT:
+                    self._stage_nego(reader, writer)
+                elif status[reader] == STATUS_NEGO_COMPLETE:
+                   except:
+                break
 
+    def _stage_handle_request(self, reader, writer):
+        data = yield from reader.read(2)
+        assert data[:1] == b'\x05'
+        cmd = data[1:2]
+        if cmd == b'\x01': # CONNECT
+            data = yield from reader.read(2)
+            assert data[:1] == b'\x00'
+            atyp = data[1:2]
+            if atyp == b'\x01':
+                 
+            elif atyp == b'\x03':
+                data = yield from reader.read(1)
+                data = yield from reader.read(
+                    int.from_bytes(data, byteorder='big'))
+                
+                
+            else: # command not supported
+                
         
     def _stage_nego(self, reader, writer):
         data = yield from reader.read(2)
         if data[:1] != b'\x05':
-            break
+            raise ProtocolError()
         method_num = ord(data[1:2])
         assert method_num == 1, "Only supported method for server now"
         data = yield from reader.read(method_num)             
@@ -54,3 +65,4 @@ class AsocksServer:
             asyncio.start_servr(self._accept_client,
                                         '127.0.0.1', 2080,
                                         loop=loop))
+
