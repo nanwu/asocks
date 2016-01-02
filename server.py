@@ -1,6 +1,10 @@
 import socket
+from errno import ENETUNREACH, EHOSTUNREACH, ECONNREFUSED
+import struct
+import asyncio 
 
 STATUS_INIT = 0
+STATUS_NEGO_COMPLETE = 1
 
 class AsocksServer:
 	
@@ -41,13 +45,29 @@ class AsocksServer:
                  
             elif atyp == b'\x03':
                 data = yield from reader.read(1)
-                data = yield from reader.read(
+                host = yield from reader.read(
                     int.from_bytes(data, byteorder='big'))
+                data = yield from reader.read(2)
+                port = struct.unpack('>H', data)
+                try:
+                    s = socket.socket(socket.AF_INET,
+                                                  socket.SOCK_STREAM)
+                    s.connect((host, port))
+                except socket.timeout:
+                    
+                except socket.error as err:
+                    if err.errno == ENETUNREACH:
+                        
+                    elif err.errno == EHOSTUNREACH:
+                    elif err.errno == ECONNREFUSED:
+                    
+            else:
+                # X'08' Address type not supported
                 
-                
-            else: # command not supported
-                
-        
+        elif cmd == b'\x02':
+        elif cmd == b'\x03':
+        else:
+            # x'07' command not supported     
     def _stage_nego(self, reader, writer):
         data = yield from reader.read(2)
         if data[:1] != b'\x05':
