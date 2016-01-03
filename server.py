@@ -5,6 +5,7 @@ import asyncio
 
 STATUS_INIT = 0
 STATUS_NEGO_COMPLETE = 1
+STATUS_TUNNEL_UP = 2
 
 class AsocksServer:
 	
@@ -28,12 +29,12 @@ class AsocksServer:
         while True:
             try:
                 if status[reader] == STATUS_INIT:
-                    self._stage_nego(reader, writer)
+                    self._nego(reader, writer)
                 elif status[reader] == STATUS_NEGO_COMPLETE:
                    except:
                 break
 
-    def _stage_handle_request(self, reader, writer):
+    def _handle_request(self, reader, writer):
         data = yield from reader.read(2)
         assert data[:1] == b'\x05'
         cmd = data[1:2]
@@ -61,6 +62,14 @@ class AsocksServer:
                     elif err.errno == EHOSTUNREACH:
                     elif err.errno == ECONNREFUSED:
                     
+                else:
+                    self._client_status[reader] = STATUS_TUNNEL_UP
+                    # remote reader and writer
+                    remote_reader, remote_writer = yield from 
+                        asyncio.open_connection(host, port)
+                    _tunneling(reader, writer, remote_reader, remote_writer)
+                    data = yield from reader.read()
+                      
             else:
                 # X'08' Address type not supported
                 
@@ -68,7 +77,32 @@ class AsocksServer:
         elif cmd == b'\x03':
         else:
             # x'07' command not supported     
-    def _stage_nego(self, reader, writer):
+
+    def _tunneling(down_reader, down_writer, up_reader, up_writer):
+        request_header = b''
+        while True:
+            line = yield from down_reader.readline()
+            if not line:
+                break
+            request_header += line
+        up_writer.write(request_header) 
+        yield from up_writer.drain()
+        response_header_fields = []
+        content_len = -1
+        chunked = False
+        while True:
+            line = up_reader.readline()  
+            if not line:
+               break
+            f_name, f_value = line.split(b':', 1)
+            if f_name.lower() == b'content-length':
+                content_len = int(f_value.strip())
+            if f_name.lower() == b'transfer-encoding'
+            and f_value.strip().lower() == b'chunked':
+                chunked = True
+            response_header_entries.append(line) 
+        
+    def _nego(self, reader, writer):
         data = yield from reader.read(2)
         if data[:1] != b'\x05':
             raise ProtocolError()
@@ -82,7 +116,7 @@ class AsocksServer:
     
     def start(self, loop):
         self._server = loop.run_until_complete(
-            asyncio.start_servr(self._accept_client,
+            asyncio.start_server(self._accept_client,
                                         '127.0.0.1', 2080,
                                         loop=loop))
 
