@@ -82,9 +82,17 @@ class Client:
         
     def recvall(self):
         data = b''
-        size = self._socket.recvexactly(4)
-        size = struct.unpack('>I', size)
-        data = self._socket.recvexactly(size)
+        size = self._recvexactly(4)
+        size = struct.unpack('>I', size)[0]
+        data = self._recvexactly(size)
+        return data
+
+    def _recvexactly(self, size):
+        data = b''
+        while size:
+            res = self._socket.recv(size)
+            data += res
+            size -= len(res)
         return data
 
     def _send_conn_request(self, dest):
