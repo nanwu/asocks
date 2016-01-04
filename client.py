@@ -29,12 +29,14 @@ class Client:
     def _negotiate(self):
         try:
             self._socket.connect(self._proxy_addr)
+            print('connected to server')
         except socket.error as e:
             self._socket.close()
             print("Error connecting to proxy {0}:{1}".format(*self._proxy_addr))
         else:
             try:
                 self._socket.send(self._auth_data_chunk)
+                print("auth request sent out")
                 method_selected = self._socket.recv(2)
             except socket.error as e:
                 print("Error send auth data", e)
@@ -80,12 +82,9 @@ class Client:
         
     def recvall(self):
         data = b''
-        import pdb; pdb.set_trace()
-        while True:
-            frag = self._socket.recv(BUFF_SIZE)
-            if len(frag) == 0:
-                break
-            data += frag
+        size = self._socket.recvexactly(4)
+        size = struct.unpack('>I', size)
+        data = self._socket.recvexactly(size)
         return data
 
     def _send_conn_request(self, dest):
