@@ -1,16 +1,18 @@
 import asyncio
 
-@asyncio.coroutine
-def client(loop):
-    r, w = yield from asyncio.open_connection(
-        '127.0.0.1', 2080,
-        loop=loop)
-    w.write(b'\x05\x01\x00')
-    yield from w.drain()
-    data = yield from r.readline() 
-    print(data)
-    w.close()
+class SomeProtocol(asyncio.Protocol):
+    
+    def __init__(self, loop):
+        self.loop = loop
+        
+    def connection_made(self, transport):
+         
 
 loop = asyncio.get_event_loop()
-loop.run_until_complete(client(loop))
+coro = loop.create_connection(lambda: SomeProtocol(loop), 
+                        'www.qq.com', 80)
+loop.run_until_complete(coro)
+loop.run_forever()
 loop.close()
+
+
