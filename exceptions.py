@@ -11,3 +11,9 @@ class ConnectionError(Exception):
 
 class RequestNotSucceed(Exception):
     pass
+
+class InvalidRequest(Exception):
+    pass
+
+class WrongProtocol(InvalidRequest):
+    pass
