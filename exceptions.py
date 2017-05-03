@@ -6,6 +6,9 @@ class ProtocolError(Exception):
 class ProxyAuthError(Exception):
     pass
 
+class ConnectToRemoteError(Exception):
+    pass
+
 class ConnectionError(Exception):
     pass
 
