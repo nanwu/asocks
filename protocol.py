@@ -7,15 +7,6 @@ from config import *
 
 import asyncio
 
-SUCCEEDED = b'\x00'
-GENERAL_FAIL = b'\x01'
-NETWORK_UNREACH = b'\x03'
-HOST_UNREACH = b'\x04'
-CONN_REFUSED = b'\x05'
-TTL_EXPIRED = b'\x06'
-COMM_NOT_SUPP = b'\x07'
-ADDR_TYP_NOT_SUPP = b'\x08'
-
 
 class Socks5ProtocolState:
     
@@ -24,7 +15,6 @@ class Socks5ProtocolState:
     AUTHORIZED = 2
     CONNECTED = 3
    
-    
 class ServerRemoteProtocol(asyncio.Protocol):
     
     def __init__(self, protocol_to_client):
@@ -42,7 +32,6 @@ class ServerClientProtocol(asyncio.Protocol)
     def __init__(self):
         self.transport_to_client = None
         self.transport_to_remote = None
-        self._loop = self.transport_to_client._loop
         self.state = Socks5Protocol.INIT
         self.remote_host_atype = None
 
@@ -54,6 +43,7 @@ class ServerClientProtocol(asyncio.Protocol)
         peername = transport.get_extra_info('peername')
         print('Receive connection from {}.'.format(peername))
         self.transport_to_client = transport
+        self._loop = self.transport_to_client._loop
 
     def data_received(self, data):
         if self.state == Socks5ProtocolState.INIT:
@@ -87,10 +77,10 @@ class ServerClientProtocol(asyncio.Protocol)
         
         respone = b'\x05' + accepted_code
         self.transport_to_client.write(response)
-        self.state = self.state
+        #self.state = self.state
         
         # skip the auth phase when not required
-        self._next_state(self.accepted_code == auth.NoAuthRequired.method_code)
+        self._next_state(self.accepted_code == auth.NoAuthRequired.code)
 
     def _accept_connect(self, data):
         version = data[:1] 
@@ -134,9 +124,9 @@ class ServerClientProtocol(asyncio.Protocol)
             waiter.set_exception(ConnectToRemoteError(reply))
 	except socket.error as err:
 	    if err.errno == ENETUNREACH:
-		reply = NETWORK_UNREACH
+		reply = NETWORK_UNREACHABLE
 	    elif err.errno == EHOSTUNREACH:
-		reply = HOST_UNREACH
+		reply = HOST_UNREACHABLE
 	    elif err.errno == ECONNREFUSED:
 		reply = CONN_REFUSED
 	    else:
@@ -152,7 +142,7 @@ class ServerClientProtocol(asyncio.Protocol)
         try:
             self.transport_to_remote = future.result()[0]
         except ConnectToRemoteError as exc:
-            reply = self.exc.args[0]
+            reply = struct.pack('>B', self.exc.args[0])
         else:
             reply = b'\x00'   
         
