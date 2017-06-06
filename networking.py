@@ -6,7 +6,7 @@ class AddressType:
     IPv6 = 4
     DomainName = 3
 
-class ConnectStatus:
+class ConnectionStatus:
     SUCCEEDED = 0 
     GENERAL_FAIL = 1 
     NOT_ALLOWED_BY_RULESET = 2

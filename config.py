@@ -1,11 +1,10 @@
 import configparser
 
 config_parser = configparser.ConfigParser()
-config_parser.read('example.ini')
+config_parser.read('config.ini')
 
 config = {}
-for name in config_parser['DEFAULT']:
-    if name.endswith('port'):
-        config[name] = config_parser['DEFAULT'].getint(name) 
+for name in config_parser['networking']:
+    config[name.upper()] = config_parser['networking'].getint(name) 
 
 globals().update(config)
