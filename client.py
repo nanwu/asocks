@@ -2,15 +2,26 @@
 # -*- coding: utf-8 -*-
 
 import socket
-import socketserver
 import struct
-from .exceptions import ProtocolError, ProxyAuthError, RequestNotSucceed
+import email
+from io import StringIO
+import logging
+
+from socketserver import ForkingMixIn, TCPServer, StreamRequestHandler
+
+
+from exception import ProtocolError, ProxyAuthError, RequestNotSucceed
+from logger import console_handler
+from proxy_config import PROXY_LOCAL_PORT
 
 STATUS_INIT = 0
 STATUS_NEGO = 1
 STATUS_AUTHENTICATED = 2
 STATUS_CONN_ESTABLISHED = 3
 
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+logger.addHandler(console_handler)
 
 class ClientState:
     INIT = 1
@@ -136,10 +147,59 @@ class Client:
         port = struct.unpack('>H', res[:2])[0]
         return addr, port
     
+class ProxyServerHandler(StreamRequestHandler):
 
-class ClientThread(Thread):
-    
-    def __init__(self)
+    def handle(self):
+        self.data = b''
+        self.request_body = None 
+        body_length_left = None
+
+        while True:
+            chunk = self.request.recv(body_length_left or 1024)
+            self.data += chunk
+
+            if body_length_left is not None:
+                body_length_left -= len(chunk)
+                if body_length_left <= 0:
+                    break
+                else:
+                    continue
+
+            end_of_header = self.data.index(b'\r\n\r\n')
+            if end_of_header == -1:
+                continue
+            
+            http_request, headers = self.data[:end_of_header].split(b'\r\n', 1)
+            self.request_body = self.data[end_of_header+4:]
+            headers = email.message_from_file(StringIO(str(headers)))
+            headers = dict(headers.items())
+
+            if 'Content-Length' not in headers or headers['Content-Length'] == 0:
+                break
+
+            # logging when Cotent-Length showing for testing
+            logger.info(str(self.data))
+            body_length_left = headers['Content-Length'] - len(self.request_body)
+            if body_length_left <= 0:
+                break
+       
+        print(self.data)
+
+class Socks5ProxyServer(ForkingMixIn, TCPServer):
+    pass
+
+
+if __name__ == '__main__':
+    server = Socks5ProxyServer(('localhost', PROXY_LOCAL_PORT), ProxyServerHandler)    
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        pass
+    except Exception:
+        pass
+    finally:
+        server.shutdown()
+        server.server_close()
 
 
 

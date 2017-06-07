@@ -28,7 +28,7 @@ class Socks5ProtocolState:
     StateMapping = None
 
     @classmethod
-    def get_state(cls, state):
+    def state_name(cls, state):
         if cls.StateMapping is None:
             cls.StateMapping = {
                 getattr(cls, attr): attr 
@@ -43,11 +43,17 @@ class ServerRemoteProtocol(asyncio.Protocol):
     def __init__(self, transport_to_client):
         self.transport_to_remote = None
         self.transport_to_client = transport_to_client
+        
+        self.logger = logging.getLogger(__name__)
+        self.logger.setLevel(logging.DEBUG)
+        self.logger.addHandler(console_handler)
 
     def connection_made(self, transport):
         self.transport_to_remote = transport
 
     def data_received(self, data):
+        self.logger.debug(
+            'Received data from remote server:\n{}'.format(str(data)))
         self.transport_to_client.write(data)
 
 class ServerClientProtocol(asyncio.Protocol):
@@ -77,8 +83,8 @@ class ServerClientProtocol(asyncio.Protocol):
 
     def data_received(self, data):
         self.logger.info('CURRENT STATE:{}'.format(
-            Socks5ProtocolState.get_state(self.state)))
-        self.logger.info(str(data))
+            Socks5ProtocolState.state_name(self.state)))
+        self.logger.info(data)
              
         if self.state == Socks5ProtocolState.INIT:
             self._negotiate_auth_method(data)
@@ -144,7 +150,7 @@ class ServerClientProtocol(asyncio.Protocol):
 
         port = struct.unpack('>H', port)[0]
         self.logger.info(
-	        'Connecting to remove server at {}:{}.'.format(host, port))
+	        'Connecting to remote server at {}:{}.'.format(host, port))
 
         waiter = asyncio.Future()
         waiter.add_done_callback(self._remote_connected)
@@ -158,8 +164,7 @@ class ServerClientProtocol(asyncio.Protocol):
                 functools.partial(ServerRemoteProtocol, 
                                   transport_to_client=self.transport_to_client),
                 host, 
-                port,
-                local_addr=('10.0.2.15', PORT_CONNECT_REMOTE))
+                port)
         except socket.timeout:
             reply = Status.TTL_EXPIRED
             waiter.set_exception(ConnectToRemoteError(reply))
@@ -176,12 +181,13 @@ class ServerClientProtocol(asyncio.Protocol):
             self.logger.error(
 		        'Connecting to {}:{} failed. Error code:{}'.format(
 		        host, port, reply))
-        except:
+        except Exception as e:
+            self.logger.debug(str(e))
             reply = Status.GENERAL_FAIL
             waiter.set_exception(ConnectToRemoteError(reply))
             self.logger.error('Connecting to {}:{} failed.'.format(host, port))
         else:
-            self.logger.error('Connected to {}:{}.'.format(host, port))
+            self.logger.info('Connected to {}:{}.'.format(host, port))
             waiter.set_result((transport, protocol))
 
     def _remote_connected(self, future):
@@ -196,21 +202,34 @@ class ServerClientProtocol(asyncio.Protocol):
             b'\x05', # protocol version
             reply,   
             b'\x00',  
-	        self.remote_host_atype,
+	    self.remote_host_atype,
             b'\x00', 
-            b'\x00'
+            b'\x00\x00'
         ] 
+
         response_to_client = b''.join(response_to_client)
+        self.logger.debug('Response to client: {}'.format(str(response_to_client)))
         self.transport_to_client.write(response_to_client)
+
         if reply != b'\x00':
             self.transport_to_client.close() # triggers connection_lost()
+        else:
+            self._next_state()
 
-    def connection_lost(self):
-        """Need to clean up connection with remote host here"""
-        self.logger.info('Closing connection')
-        self.transport_to_remote.close()
+    def connection_lost(self, exc):
+        """Close connection to remote host when connection
+        to client finishes.
+        """
+        if exc is None:
+            self.logger.info('Closing connection to client')
+        else:
+            self.logger.info(str(exc))
+
+        if self.transport_to_remote:
+            self.transport_to_remote.close()
 
     def _tunneling(self, data):
+        self.logger.debug('Sending data to remote')
         self.transport_to_remote.write(data)
         
           
