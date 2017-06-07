@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import socket
+import socketserver
 import struct
 from .exceptions import ProtocolError, ProxyAuthError, RequestNotSucceed
 
@@ -11,6 +12,12 @@ STATUS_AUTHENTICATED = 2
 STATUS_CONN_ESTABLISHED = 3
 
 
+class ClientState:
+    INIT = 1
+    NEGOTIATED = 2 
+    AUTHENTICATED = 3
+    CONNECTED_TO_REMOTE = 4
+ 
 BUFF_SIZE = 1024*1024
 
 class Client:
@@ -129,6 +136,11 @@ class Client:
         port = struct.unpack('>H', res[:2])[0]
         return addr, port
     
+
+class ClientThread(Thread):
+    
+    def __init__(self)
+
 
 
 
