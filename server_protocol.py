@@ -84,6 +84,7 @@ class ServerClientProtocol(asyncio.Protocol):
     def data_received(self, data):
         self.logger.info('CURRENT STATE:{}'.format(
             Socks5ProtocolState.state_name(self.state)))
+        self.logger.info('Receive data from client:\n')
         self.logger.info(data)
              
         if self.state == Socks5ProtocolState.INIT:
@@ -227,10 +228,12 @@ class ServerClientProtocol(asyncio.Protocol):
 
         if self.transport_to_remote:
             self.transport_to_remote.close()
+            self.logger.debug('Connection to remote is closed.')
 
     def _tunneling(self, data):
         self.logger.debug('Sending data to remote')
         self.transport_to_remote.write(data)
+        self.logger.debug('Sent data to remote.')
         
           
 loop = asyncio.get_event_loop()
