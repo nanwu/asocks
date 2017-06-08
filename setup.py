@@ -8,6 +8,15 @@ setup(
                   'async IO model.',
     author = 'Nan Wu',
     author_email = 'nanbytesflow@gmail.com',
+    license='MIT',
     url = 'https://github.com/nanwu/asocks',
-    keywords = ['socks', 'proxy', 'python3', 'async']
+    keywords = ['socks', 'proxy', 'python3', 'async'],
+    install_requires=[
+        'setuptools'
+    ],
+    entry_pooints={
+        'console_scripts':[
+            'asocks-server=server.__main__:start_serve' 
+        ]
+    },
 )
