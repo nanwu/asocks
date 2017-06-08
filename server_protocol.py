@@ -1,4 +1,5 @@
 import sys
+import os
 import asyncio
 import errno
 import struct
@@ -13,10 +14,6 @@ from exception import InvalidRequest, WrongProtocol, ConnectToRemoteError
 from config import *
 from logger import console_handler
 
-
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-logger.addHandler(console_handler)
 
 class Socks5ProtocolState:
     
@@ -39,6 +36,7 @@ class Socks5ProtocolState:
         return cls.StateMapping.get(state)
      
 class ServerRemoteProtocol(asyncio.Protocol):
+    """Protocol for streaming to remote host"""
     
     def __init__(self, transport_to_client):
         self.transport_to_remote = None
@@ -52,8 +50,6 @@ class ServerRemoteProtocol(asyncio.Protocol):
         self.transport_to_remote = transport
 
     def data_received(self, data):
-        self.logger.debug(
-            'Received data from remote server:\n{}'.format(str(data)))
         self.transport_to_client.write(data)
 
 class ServerClientProtocol(asyncio.Protocol):
@@ -71,22 +67,19 @@ class ServerClientProtocol(asyncio.Protocol):
         self.logger.addHandler(console_handler)
 
     def _next_state(self, skips=0):
-        """ Move protocol state forward by one plus skips"""
+        """update protocol state by (1 + #skips)"""
         self.state += 1 + skips
 
     def connection_made(self, transport):
         peername = transport.get_extra_info('peername')
-        self.logger.info('Receives connection from {}.'.format(peername))
+        self.logger.info(
+            'Received connection from client {}.'.format(peername))
 
         self.transport_to_client = transport
         self._loop = self.transport_to_client._loop
 
     def data_received(self, data):
-        self.logger.info('CURRENT STATE:{}'.format(
-            Socks5ProtocolState.state_name(self.state)))
-        self.logger.info('Receive data from client:\n')
-        self.logger.info(data)
-             
+
         if self.state == Socks5ProtocolState.INIT:
             self._negotiate_auth_method(data)
         elif self.state == Socks5ProtocolState.NEGOTIATED:
@@ -135,7 +128,7 @@ class ServerClientProtocol(asyncio.Protocol):
         self.remote_host_atype = atype = data[3:4]
         atype = struct.unpack('>B', atype)[0]
         assert atype in (1, 3, 4) 
-        if atype == AddressType.IPv6:
+        if atype == AddressType.IPv4:
             host = '.'.join([str(byte) for byte in data[4:8]])
             port = data[8:10]
         elif atype == AddressType.DomainName:
@@ -143,7 +136,7 @@ class ServerClientProtocol(asyncio.Protocol):
             host = data[5:5+addr_octets_count]
             port = data[5+addr_octets_count:7+addr_octets_count]
         else:
-            assert len(data) > 22
+            #assert len(data) > 22
             host = ':'.join(
                 [str(struct.unpack('>H', data[idx:idx+2])[0]) 
                  for idx in range(4, 20, 2)])
@@ -155,7 +148,12 @@ class ServerClientProtocol(asyncio.Protocol):
 
         waiter = asyncio.Future()
         waiter.add_done_callback(self._remote_connected)
-        task = self._loop.create_task(self._connect_to_remote(host, port, waiter)) 
+
+        if sys.version_info >= (3, 4, 2):
+            # create_task method is added to asyncio library in Python 3.4.2
+            task = self._loop.create_task(self._connect_to_remote(host, port, waiter)) 
+        else:
+            task = asyncio.async(self._connect_to_remote(host, port, waiter))
     
     @asyncio.coroutine
     def _connect_to_remote(self, host, port, waiter):
@@ -166,24 +164,23 @@ class ServerClientProtocol(asyncio.Protocol):
                                   transport_to_client=self.transport_to_client),
                 host, 
                 port)
-        except socket.timeout:
-            reply = Status.TTL_EXPIRED
-            waiter.set_exception(ConnectToRemoteError(reply))
-        except socket.error as err:
+        except OSError as err:
             if err.errno == errno.ENETUNREACH:
                 reply = Status.NETWORK_UNREACHABLE
             elif err.errno == errno.EHOSTUNREACH:
                 reply = Status.HOST_UNREACHABLE
             elif err.errno == errno.ECONNREFUSED:
                 reply = Status.CONN_REFUSED
+            elif err.errno == errno.ETIMEDOUT:
+                reply = Status.TTL_EXPIRED
             else:
-                reply = socket.error 
+                reply = Status.GENERAL_FAIL 
+
             waiter.set_exception(ConnectToRemoteError(reply))
-            self.logger.error(
-		        'Connecting to {}:{} failed. Error code:{}'.format(
-		        host, port, reply))
+            self.logger.error('Connecting to {}:{} failed: '.format(
+		                  host, port, os.strerror(err.errno)))
         except Exception as e:
-            self.logger.debug(str(e))
+            self.logger.error(str(e))
             reply = Status.GENERAL_FAIL
             waiter.set_exception(ConnectToRemoteError(reply))
             self.logger.error('Connecting to {}:{} failed.'.format(host, port))
@@ -199,17 +196,18 @@ class ServerClientProtocol(asyncio.Protocol):
         else:
             reply = b'\x00'   
         
+
         response_to_client = [
             b'\x05', # protocol version
             reply,   
             b'\x00',  
-	    self.remote_host_atype,
+            # Return empty bndaddr and bndport to client
+            struct.pack('B', AddressType.DomainName),
             b'\x00', 
             b'\x00\x00'
         ] 
 
         response_to_client = b''.join(response_to_client)
-        self.logger.debug('Response to client: {}'.format(str(response_to_client)))
         self.transport_to_client.write(response_to_client)
 
         if reply != b'\x00':
@@ -221,35 +219,15 @@ class ServerClientProtocol(asyncio.Protocol):
         """Close connection to remote host when connection
         to client finishes.
         """
-        if exc is None:
-            self.logger.info('Closing connection to client')
-        else:
+        if exc is not None:
             self.logger.info(str(exc))
 
         if self.transport_to_remote:
             self.transport_to_remote.close()
-            self.logger.debug('Connection to remote is closed.')
+            #self.logger.debug('Connection to remote is closed.')
 
     def _tunneling(self, data):
-        self.logger.debug('Sending data to remote')
         self.transport_to_remote.write(data)
-        self.logger.debug('Sent data to remote.')
         
           
-loop = asyncio.get_event_loop()
-coro = loop.create_server(ServerClientProtocol, '127.0.0.1', 1080)
-server = loop.run_until_complete(coro)
-logger.info('Asock server started at 127.0.0.1:1080')
-
-try:
-    loop.run_forever()
-except KeyboardInterrupt:
-    pass
-
-logger.info('Shutting down Asock server...')
-server.close()
-loop.run_until_complete(server.wait_closed())
-
-logger.info('Shutting down event loop...')
-loop.close()
 

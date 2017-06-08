@@ -12,6 +12,9 @@ class ClientState:
     CONNECTED_TO_REMOTE = 4
     
 
+class ClientServerProtocol(asyncio.protocol):
+    pass
+
 class ClientProtocol(asyncio.protocol):
     
     def __init__(self, remote_domain_name, remote_port=80, waiter):
