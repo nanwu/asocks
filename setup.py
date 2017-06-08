@@ -1,5 +1,4 @@
-from distutils.core import setup
-
+from setuptools import setup
 
 setup(
     name = 'asocks',
@@ -11,10 +10,18 @@ setup(
     license='MIT',
     url = 'https://github.com/nanwu/asocks',
     keywords = ['socks', 'proxy', 'python3', 'async'],
-    install_requires=[
-        'setuptools'
+    classifiers=[
+        # 3: Alpha
+        # 4: Beta
+        # 5: Production/Stable
+	'Developemnt Status :: 3 - Alpha',
+
+        'Programming Language :: Python :: 3.4',
+        'Programming Language :: Python :: 3.5'
     ],
-    entry_pooints={
+    packages=['server'],
+    py_modules=['auth', 'networking', 'logger', 'exception'],
+    entry_points={
         'console_scripts':[
             'asocks-server=server.__main__:start_serve' 
         ]

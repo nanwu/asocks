@@ -11,7 +11,6 @@ import auth
 from networking import (SOCK_PROTOCOL_VERSION, AddressType, 
                         ConnectionStatus as Status)
 from exception import InvalidRequest, WrongProtocol, ConnectToRemoteError
-from config import *
 from logger import console_handler
 
 
