@@ -1,5 +1,9 @@
 # Asocks
 
+[![PyPI version](https://badge.fury.io/py/asocks.svg)](https://badge.fury.io/py/asocks)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+
 A SOCKS5 proxy client/server built on async IO model. Python3 asyncio library is leveraged for providing high level neworking API.
 
 This project currently is in BETA version with proxy server fully functioning. More features will come soon.
