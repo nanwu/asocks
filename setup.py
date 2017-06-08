@@ -23,7 +23,7 @@ setup(
     py_modules=['auth', 'networking', 'logger', 'exception'],
     entry_points={
         'console_scripts':[
-            'asocks-server=server.__main__:start_serve' 
+            'asocks-server=server.__main__:main' 
         ]
     },
 )

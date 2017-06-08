@@ -100,7 +100,8 @@ class ServerClientProtocol(asyncio.Protocol):
         if len(auth_method_codes) < auth_method_count:
             raise InvalidRequest
 
-        # If not method selected. Connection will close. 
+        # When no client-proposed auth method is chosen,
+        # client connection will be closed. 
         accepted_code = b'\xff' 
 
         for auth_method_code in auth_method_codes:
@@ -135,7 +136,6 @@ class ServerClientProtocol(asyncio.Protocol):
             host = data[5:5+addr_octets_count]
             port = data[5+addr_octets_count:7+addr_octets_count]
         else:
-            #assert len(data) > 22
             host = ':'.join(
                 [str(struct.unpack('>H', data[idx:idx+2])[0]) 
                  for idx in range(4, 20, 2)])
@@ -149,7 +149,7 @@ class ServerClientProtocol(asyncio.Protocol):
         waiter.add_done_callback(self._remote_connected)
 
         if sys.version_info >= (3, 4, 2):
-            # create_task method is added to asyncio library in Python 3.4.2
+            # create_task added to asyncio in Python 3.4.2
             task = self._loop.create_task(self._connect_to_remote(host, port, waiter)) 
         else:
             task = asyncio.async(self._connect_to_remote(host, port, waiter))
@@ -215,15 +215,13 @@ class ServerClientProtocol(asyncio.Protocol):
             self._next_state()
 
     def connection_lost(self, exc):
-        """Close connection to remote host when connection
-        to client finishes.
-        """
+        """Close connection to remote when client connection closed."""
+
         if exc is not None:
             self.logger.info(str(exc))
 
         if self.transport_to_remote:
             self.transport_to_remote.close()
-            #self.logger.debug('Connection to remote is closed.')
 
     def _tunneling(self, data):
         self.transport_to_remote.write(data)

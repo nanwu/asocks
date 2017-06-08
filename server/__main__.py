@@ -37,14 +37,14 @@ def start_serve(*args, **kwargs):
     loop.close()
     logger.info('Shutting down Asocks proxy service.')
 
-if __name__ == '__main__':
+def main():
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument('-p', '--port', type=int, 
-        help='Specify the port proxy server listens on ')
+        help='specify the port proxy server listens on')
     arg_parser.add_argument('-c', '--concurrency', type=int,
-        help='Max connection server can handle.')
+        help='max concurrent connections server will accept')
     arg_parser.add_argument('-l', '--local', action='store_true',
-        help='Running local server.')
+        help='running server on localhost')
     args = arg_parser.parse_args()
     
     proxy_port = args.port or 1080
@@ -55,3 +55,6 @@ if __name__ == '__main__':
               'port': proxy_port,
               'concurrency': concurrency}
     start_serve(**kwargs)
+
+if __name__ == '__main__':
+    main()
