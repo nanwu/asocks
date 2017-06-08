@@ -22,7 +22,7 @@ def start_serve(*args, **kwargs):
 
     server = loop.run_until_complete(coro)
     logger.info(
-        'Asock server starts listening at {}:{}'.format(
+        'Asocks server starts listening at {}:{}'.format(
             kwargs['addr'], kwargs['port']))
 
     try:

@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 
-A SOCKS5 proxy client/server built on async IO model. Python3 asyncio library is leveraged for providing high level neworking API.
+A SOCKS5 proxy client/server built on top of asyncio: the Python3 library which provides infrastructure for writing single-thread concurrent code and other high level networking APIs.
 
 This project currently is in BETA version with proxy server fully functioning. More features will come soon.
 ## Installation
